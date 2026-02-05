@@ -6,56 +6,107 @@ import { OrdersView } from './components/OrdersView';
 import { StatsView } from './components/StatsView';
 import { SocialView } from './components/SocialView';
 import { StorageService } from './services/storage';
+import { supabase } from './services/supabaseClient';
 import { Client, Order, ViewState, OrderStatus } from './types';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [clients, setClients] = useState<Client[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize data
+  // Centralized Data Fetching
+  const fetchData = async () => {
+      try {
+        const [c, o] = await Promise.all([
+            StorageService.getClients(),
+            StorageService.getOrders()
+        ]);
+        setClients(c);
+        setOrders(o);
+      } catch (error) {
+        console.error("Error syncing data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+  };
+
+  // Initial Load & Realtime Subscriptions
   useEffect(() => {
-    StorageService.seedData(); // Ensure some data exists
-    setClients(StorageService.getClients());
-    setOrders(StorageService.getOrders());
+    // 1. Initial Load
+    const init = async () => {
+        await StorageService.seedData(); // Check if seed needed
+        await fetchData();
+    };
+    init();
+
+    // 2. Realtime Subscription (Magic happens here)
+    const channel = supabase.channel('schema-db-changes')
+        .on(
+            'postgres_changes',
+            {
+                event: '*', // Listen to INSERT, UPDATE, DELETE
+                schema: 'public',
+            },
+            (payload) => {
+                console.log('Cambio detectado en BD:', payload);
+                // Simple strategy: Refetch to ensure consistency. 
+                // For massive datasets, we would update state manually based on payload.
+                fetchData();
+            }
+        )
+        .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+        supabase.removeChannel(channel);
+    };
   }, []);
 
+  // Actions (Now they just trigger the DB call, Realtime handles the UI update)
+  
   // Client Actions
-  const handleAddClient = (client: Client) => {
-    StorageService.addClient(client);
-    setClients(StorageService.getClients());
+  const handleAddClient = async (client: Client) => {
+    await StorageService.addClient(client);
   };
 
-  const handleUpdateClient = (client: Client) => {
-    StorageService.updateClient(client);
-    setClients(StorageService.getClients());
+  const handleUpdateClient = async (client: Client) => {
+    await StorageService.updateClient(client);
   };
 
-  const handleDeleteClient = (id: string) => {
-    StorageService.deleteClient(id);
-    setClients(StorageService.getClients());
+  const handleDeleteClient = async (id: string) => {
+    await StorageService.deleteClient(id);
   };
 
   // Order Actions
-  const handleAddOrder = (order: Order) => {
-    const allOrders = [...orders, order];
-    StorageService.saveOrders(allOrders);
-    setOrders(allOrders);
+  const handleAddOrder = async (order: Order) => {
+    await StorageService.addOrder(order);
   };
 
-  const handleUpdateOrder = (updatedOrder: Order) => {
-    const updatedList = orders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
-    StorageService.saveOrders(updatedList);
-    setOrders(updatedList);
+  const handleUpdateOrder = async (updatedOrder: Order) => {
+    await StorageService.updateOrder(updatedOrder);
   };
 
-  const handleUpdateOrderStatus = (id: string, status: OrderStatus) => {
-    const updatedOrders = orders.map(o => o.id === id ? { ...o, status } : o);
-    StorageService.saveOrders(updatedOrders);
-    setOrders(updatedOrders);
+  const handleUpdateOrderStatus = async (id: string, status: OrderStatus) => {
+    const orderToUpdate = orders.find(o => o.id === id);
+    if (orderToUpdate) {
+        // Optimistic UI update for instant feedback locally
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+        // Actual DB update
+        await StorageService.updateOrder({ ...orderToUpdate, status });
+    }
   };
 
   const renderContent = () => {
+    if (isLoading) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center text-white">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mb-4"></div>
+                <p className="animate-pulse">Sincronizando con la Nube...</p>
+            </div>
+        );
+    }
+
     switch (currentView) {
       case 'dashboard':
         return <DashboardView clients={clients} orders={orders} />;

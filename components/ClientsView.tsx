@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Client, Order, OrderStatus } from '../types';
 import { Search, Plus, Phone, Mail, MapPin, Edit2, Trash2, X, Users, Filter, ChevronDown, ChevronUp, Clock, ArrowUpRight, Building2, User, Ruler, History, DollarSign, Calendar, Save, ShoppingBag, Star, TrendingUp, Crown, UserPlus, Shirt } from 'lucide-react';
@@ -113,7 +114,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, orders, onAdd
       const matchesSearch = c.name.toLowerCase().includes(searchLower) ||
                             (c.businessName && c.businessName.toLowerCase().includes(searchLower)) ||
                             c.phone.includes(searchTerm) ||
-                            c.email.toLowerCase().includes(searchLower);
+                            (c.email && c.email.toLowerCase().includes(searchLower));
       const matchesDate = c.createdAt >= start && c.createdAt <= end; 
       return matchesSearch && matchesDate;
     });
@@ -228,30 +229,43 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, orders, onAdd
       const [personnelList, setPersonnelList] = useState<PersonnelProfile[]>([]);
       const [activePersonId, setActivePersonId] = useState<string | null>(null);
       
-      // Load Measurements
+      // Load Measurements SAFELY
       useEffect(() => {
           try {
               if (selectedClient.measurements) {
-                  const parsed = JSON.parse(selectedClient.measurements);
-                  // Migration logic: if parsed is a simple object (old format), convert to array
-                  if (!Array.isArray(parsed) && typeof parsed === 'object') {
-                      const legacyProfile: PersonnelProfile = {
-                          id: 'legacy',
-                          name: selectedClient.name || 'Principal',
-                          standardSize: '',
-                          values: parsed,
-                          notes: parsed.notas || ''
-                      };
-                      setPersonnelList([legacyProfile]);
-                      setActivePersonId('legacy');
+                  // Try parsing
+                  let parsed;
+                  try {
+                      parsed = JSON.parse(selectedClient.measurements);
+                  } catch(err) {
+                      console.warn("Error parsing measurements JSON", err);
+                      parsed = null;
+                  }
+
+                  if (parsed) {
+                    // Migration logic: if parsed is a simple object (old format), convert to array
+                    if (!Array.isArray(parsed) && typeof parsed === 'object') {
+                        const legacyProfile: PersonnelProfile = {
+                            id: 'legacy',
+                            name: selectedClient.name || 'Principal',
+                            standardSize: '',
+                            values: parsed,
+                            notes: (parsed as any).notas || ''
+                        };
+                        setPersonnelList([legacyProfile]);
+                        setActivePersonId('legacy');
+                    } else if (Array.isArray(parsed)) {
+                        setPersonnelList(parsed);
+                        if (parsed.length > 0) setActivePersonId(parsed[0].id);
+                    }
                   } else {
-                      setPersonnelList(parsed);
-                      if (parsed.length > 0) setActivePersonId(parsed[0].id);
+                      setPersonnelList([]);
                   }
               } else {
                   setPersonnelList([]);
               }
           } catch(e) { 
+              console.error("Critical error loading measurements", e);
               setPersonnelList([]);
           }
       }, [selectedClient]);

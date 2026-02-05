@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Order, OrderStatus, Client, Gender, OrderItem } from '../types';
 import { StorageService } from '../services/storage';
@@ -448,10 +449,15 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ orders, clients, onAddOr
      return hasClient && hasModel && hasFabric;
   }, [newOrder.clientId, newOrder.garmentModel, newOrder.fabricType]);
 
-  // ... (Effects and Helper functions remain unchanged) ...
+  // Updated useEffect to handle async call
   useEffect(() => {
     if (isModalOpen && !editingId) {
-      setNextOrderNumber(StorageService.getNextOrderNumber());
+      const fetchNext = async () => {
+          const num = await StorageService.getNextOrderNumber();
+          setNextOrderNumber(num);
+      };
+      fetchNext();
+      
       const d = new Date();
       d.setDate(d.getDate() + 7);
       setDeadlineDate(d.toISOString().split('T')[0]);
@@ -662,9 +668,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ orders, clients, onAddOr
       setIsModalOpen(true);
   };
 
-  const handleQuickService = (type: 'Bordado' | 'Sublimacion' | 'Costura') => {
+  const handleQuickService = async (type: 'Bordado' | 'Sublimacion' | 'Costura') => {
       resetForm();
-      const nextNum = StorageService.getNextOrderNumber();
+      const nextNum = await StorageService.getNextOrderNumber();
       setNextOrderNumber(nextNum);
       setOrderMode(type); 
       const defaultColor = type === 'Sublimacion' ? 'Full Color / CMYK' : 'N/A';

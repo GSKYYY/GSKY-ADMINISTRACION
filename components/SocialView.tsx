@@ -155,10 +155,10 @@ export const SocialView: React.FC = () => {
 
     injectScripts();
 
-    // 3. Smooth Loading Timer (3 seconds for the "Apple" feel)
+    // 3. Smooth Loading Timer (Reduced to 1s)
     const timer = setTimeout(() => {
         setIsLoading(false);
-    }, 3000);
+    }, 1000);
 
     return () => {
         clearTimeout(timer);

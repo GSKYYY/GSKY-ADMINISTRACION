@@ -55,7 +55,7 @@ export interface OrderItem {
 export interface UniformTemplate {
   id: string;
   name: string;
-  items: Omit<OrderItem, 'id'>[];
+  items: OrderItem[];
 }
 
 export interface Order {

@@ -127,9 +127,9 @@ export const StorageService = {
                 id: 't1',
                 name: 'Dotación Básica Operarios',
                 items: [
-                    { gender: 'Caballero', type: 'Pantalón', size: '32', quantity: 1 },
-                    { gender: 'Caballero', type: 'Camisa', size: 'M', quantity: 2 },
-                    { gender: 'Caballero', type: 'Gorra', size: 'Única', quantity: 1 }
+                    { id: 't1-i1', gender: 'Caballero', type: 'Pantalón', size: '32', quantity: 1 },
+                    { id: 't1-i2', gender: 'Caballero', type: 'Camisa', size: 'M', quantity: 2 },
+                    { id: 't1-i3', gender: 'Caballero', type: 'Gorra', size: 'Única', quantity: 1 }
                 ]
             }
         ];

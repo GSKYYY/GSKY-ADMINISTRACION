@@ -1,5 +1,4 @@
 
-
 export interface Client {
   id: string;
   businessName?: string; // Nombre del Negocio/Empresa (Principal)
@@ -96,5 +95,4 @@ export interface DashboardMetrics {
   totalRevenue: number;
 }
 
-// Added 'ai' and 'trash' to satisfy App.tsx view navigation
 export type ViewState = 'dashboard' | 'clients' | 'orders' | 'stats' | 'social' | 'ai' | 'trash';
